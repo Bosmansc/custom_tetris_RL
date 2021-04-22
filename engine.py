@@ -1,4 +1,5 @@
 #from __future__ import print_function
+import time
 
 import numpy as np
 import random
@@ -102,7 +103,7 @@ class TetrisEngine:
         # self.height = 20 # = initial
 
         self.width = 6
-        self.height = 8
+        self.height = 16
 
         self.board = np.zeros(shape=(self.width, self.height), dtype=np.float)
         self.action_count = 0
@@ -162,12 +163,16 @@ class TetrisEngine:
 
         if sum(can_clear) == 1:
             self.score += 40
+            time.sleep(0.5)
         elif sum(can_clear) == 2:
             self.score += 100
+            time.sleep(0.5)
         elif sum(can_clear) == 3:
             self.score += 300
+            time.sleep(0.5)
         elif sum(can_clear) == 4:
             self.score += 1200
+            time.sleep(0.5)
         self.board = new_board
 
         return sum(can_clear)
