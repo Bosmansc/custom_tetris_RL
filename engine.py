@@ -15,10 +15,11 @@ shapes = {
     #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-    #  'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+      'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
     'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
-shape_names = [  # 'J', 'L', 'Z', 'S', 'I',
+shape_names = [  # 'J', 'L', 'Z', 'S',
+     'I',
     'O']
 
 colors = {
@@ -320,14 +321,16 @@ class TetrisEngine:
 
         return df_results
 
-    def plot_results(self, history):
+    def plot_results(self, history, mode='training'):
         # input data
         df_results = self.results()
         history = history
 
         # init plot
-        pyplot.figure(figsize=(10, 5), dpi=80)
+        figure = pyplot.figure(figsize=(10, 5), dpi=80)
+        figure.canvas.set_window_title(mode)
 
+        # @TODO axes are not correct
         # PLOT EPISODE REWARD
         pyplot.subplot(131)
         x = history.history['nb_steps']
@@ -343,7 +346,7 @@ class TetrisEngine:
         pyplot.ylabel('episode reward')
 
         # title
-        pyplot.title('Episode reward')
+        pyplot.title(mode + ' Episode reward')
 
         # PLOT NR OF LINES
         pyplot.subplot(133)
@@ -359,7 +362,8 @@ class TetrisEngine:
         pyplot.ylabel('nr_of_lines')
 
         # title
-        pyplot.title('Number of lines per episode')
+        pyplot.title(mode + ' number of lines per episode')
 
         # show the plots
         pyplot.show()
+        pyplot.close()
