@@ -5,6 +5,7 @@ import numpy as np
 import random
 from PIL import Image
 import cv2
+import pandas as pd
 
 shapes = {
   #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
@@ -109,6 +110,9 @@ class TetrisEngine:
         self.action_count = 0
         self.max_actions = max_actions
 
+        # to track the results
+        self.df_info = pd.DataFrame()
+
         # actions are triggered by letters
         self.value_action_map = {
             0: rotate_left,
@@ -163,16 +167,12 @@ class TetrisEngine:
 
         if sum(can_clear) == 1:
             self.score += 40
-            time.sleep(0.5)
         elif sum(can_clear) == 2:
             self.score += 100
-            time.sleep(0.5)
         elif sum(can_clear) == 3:
             self.score += 300
-            time.sleep(0.5)
         elif sum(can_clear) == 4:
             self.score += 1200
-            time.sleep(0.5)
         self.board = new_board
 
         return sum(can_clear)
@@ -196,6 +196,7 @@ class TetrisEngine:
         done = False
         new_block = False
 
+        lines_cleared = 0
         if self._has_dropped():
             self._set_piece(True)
             lines_cleared = self._clear_lines()
@@ -212,12 +213,18 @@ class TetrisEngine:
         state = np.transpose(np.copy(self.board))
         self._set_piece(False)
 
-        height_difference = old_height - height(state)
-        self._calculate_reward(height_difference, new_block)
+        if not done:
+            height_difference = old_height - height(state)
+        else:
+            height_difference = 0
+        self._calculate_reward(height_difference, new_block, lines_cleared)
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
-                    height_difference=height_difference)
+                    height_difference=height_difference, new_episode=done)
+
+        # keep track of the results
+        self.df_info = self.df_info.append(info, ignore_index=True)
 
         return state, reward, done, info
 
@@ -233,11 +240,15 @@ class TetrisEngine:
     def reset(self):
         return self.clear()
 
-    def _calculate_reward(self, height_difference, new_block):
+    def reset_environment(self):
+        self.clear()
+        self.__init__()
+
+    def _calculate_reward(self, height_difference, new_block, lines_cleared):
         if new_block and height_difference == 0:
             self.score = 10   # reward for keeping height low
-        else:
-            self.score = -0.2   # small penalty for each 'useless' step
+        elif lines_cleared < 1:
+            self.score = -0.2   # small penalty for each 'useless' step -> the model will use more hard drops
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
@@ -268,3 +279,14 @@ class TetrisEngine:
         cv2.imshow('image', np.array(img))
         cv2.waitKey(1)
 
+    def results(self):
+        self.df_info["new_episode_cum"] = self.df_info["new_episode"].cumsum()
+
+        df_results = self.df_info.groupby('new_episode_cum', as_index=False) \
+            .agg(heigt_diff_sum=('height_difference', 'sum'),
+                 new_block_sum=('new_block', 'sum'),
+                 nr_lines_sum=('number_of_lines', 'sum'),
+                 score_sum=('score', 'sum'),
+                 score_avg=('score', 'mean'))
+
+        return df_results
