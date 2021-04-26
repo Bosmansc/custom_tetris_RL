@@ -97,6 +97,20 @@ def get_column_heights(state):
 
     return column_heights
 
+def get_column_holes(state):
+    """
+    Helper function to find the number of holes in each column
+    """
+    column_heights = get_column_heights(state)
+    holes = []
+    for i in range(state.shape[1]):
+        count = 0
+        for j in range(state.shape[0]-1, state.shape[0]-column_heights[i]-1,-1):
+            if state[j,i] == 0:
+                count += 1
+        holes.append(count)
+
+    return holes
 
 class TetrisEngine:
     def __init__(self, max_actions=5):
@@ -221,7 +235,8 @@ class TetrisEngine:
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
-                    height_difference=height_difference, new_episode=done)
+                    height_difference=height_difference, new_episode=done, boundries = get_column_heights(state),
+                    num_of_holes = get_column_holes(state))
 
         # keep track of the results
         self.df_info = self.df_info.append(info, ignore_index=True)
