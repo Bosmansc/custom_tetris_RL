@@ -1,4 +1,4 @@
-#from __future__ import print_function
+# from __future__ import print_function
 import time
 
 import numpy as np
@@ -6,24 +6,26 @@ import random
 from PIL import Image
 import cv2
 import pandas as pd
+from matplotlib import pyplot
+import matplotlib.pyplot as plt
 
 shapes = {
-  #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
-  #  'J': [(0, 0), (-1, 0), (0, -1), (0, -2)]
-  #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
-  #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
-  #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-  #  'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+    #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
+    #  'J': [(0, 0), (-1, 0), (0, -1), (0, -2)]
+    #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
+    #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
+    #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
+    #  'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
     'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
-shape_names = [#'J', 'L', 'Z', 'S', 'I',
-                'O']
+shape_names = [  # 'J', 'L', 'Z', 'S', 'I',
+    'O']
 
 colors = {
-        0: (255, 255, 255),
-        1: (247, 64, 99),
-        2: (0, 167, 247),
-    }
+    0: (255, 255, 255),
+    1: (247, 64, 99),
+    2: (0, 167, 247),
+}
 
 
 def rotated(shape, cclk=False):
@@ -36,7 +38,7 @@ def rotated(shape, cclk=False):
 def is_occupied(shape, anchor, board):
     for i, j in shape:
         x, y = anchor[0] + i, anchor[1] + j
-        if x < 0 or x >= board.shape[0] or y >= board.shape[1] or (y >=0 and board[x, y]):
+        if x < 0 or x >= board.shape[0] or y >= board.shape[1] or (y >= 0 and board[x, y]):
             return True
     return False
 
@@ -80,6 +82,7 @@ def height(state):
     """
     return max(get_column_heights(state))
 
+
 def get_column_heights(state):
     """
     Helper function to calculate the height of each column
@@ -97,6 +100,7 @@ def get_column_heights(state):
 
     return column_heights
 
+
 def get_column_holes(state):
     """
     Helper function to find the number of holes in each column
@@ -105,12 +109,13 @@ def get_column_holes(state):
     holes = []
     for i in range(state.shape[1]):
         count = 0
-        for j in range(state.shape[0]-1, state.shape[0]-column_heights[i]-1,-1):
-            if state[j,i] == 0:
+        for j in range(state.shape[0] - 1, state.shape[0] - column_heights[i] - 1, -1):
+            if state[j, i] == 0:
                 count += 1
         holes.append(count)
 
     return holes
+
 
 class TetrisEngine:
     def __init__(self, max_actions=5):
@@ -235,8 +240,10 @@ class TetrisEngine:
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
-                    height_difference=height_difference, new_episode=done, boundries = get_column_heights(state),
-                    num_of_holes = get_column_holes(state))
+                    height_difference=height_difference, new_episode=done
+                    # , boundries=get_column_heights(state),
+                    # num_of_holes=get_column_holes(state)
+                    )
 
         # keep track of the results
         self.df_info = self.df_info.append(info, ignore_index=True)
@@ -261,9 +268,9 @@ class TetrisEngine:
 
     def _calculate_reward(self, height_difference, new_block, lines_cleared):
         if new_block and height_difference == 0:
-            self.score = 10   # reward for keeping height low
+            self.score = 10  # reward for keeping height low
         elif lines_cleared < 1:
-            self.score = -0.2   # small penalty for each 'useless' step -> the model will use more hard drops
+            self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
@@ -286,7 +293,7 @@ class TetrisEngine:
         self._set_piece(False)
         img = [colors[p] for row in np.transpose(state) for p in row]
         img = np.array(img).reshape(self.height, self.width, 3).astype(np.uint8)
-        img = img[..., ::-1] # Convert RRG to BGR (used by cv2)
+        img = img[..., ::-1]  # Convert RRG to BGR (used by cv2)
         img = Image.fromarray(img, 'RGB')
         img = img.resize((self.width * 25, self.height * 25), resample=Image.BOX)
         img = np.array(img)
@@ -295,13 +302,64 @@ class TetrisEngine:
         cv2.waitKey(1)
 
     def results(self):
-        self.df_info["new_episode_cum"] = self.df_info["new_episode"].cumsum()
+        df_results = pd.DataFrame()
 
-        df_results = self.df_info.groupby('new_episode_cum', as_index=False) \
-            .agg(heigt_diff_sum=('height_difference', 'sum'),
-                 new_block_sum=('new_block', 'sum'),
-                 nr_lines_sum=('number_of_lines', 'sum'),
-                 score_sum=('score', 'sum'),
-                 score_avg=('score', 'mean'))
+        if not self.df_info.empty:
+            self.df_info["nr_episode"] = self.df_info["new_episode"].cumsum()
+
+            df_results = self.df_info.groupby('nr_episode', as_index=False) \
+                .agg(heigt_diff_sum=('height_difference', 'sum'),
+                     new_block_sum=('new_block', 'sum'),
+                     nr_lines_sum=('number_of_lines', 'sum'),
+                     score_sum=('score', 'sum'),
+                     score_avg=('score', 'mean'),
+                     count_steps=('nr_episode', 'count'))
+
+        else:
+            print("There are no results yet!")
 
         return df_results
+
+    def plot_results(self, history):
+        # input data
+        df_results = self.results()
+        history = history
+
+        # init plot
+        pyplot.figure(figsize=(10, 5), dpi=80)
+
+        # PLOT EPISODE REWARD
+        pyplot.subplot(131)
+        x = history.history['nb_steps']
+        y = history.history['episode_reward']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('nb of steps per episode')
+
+        # naming the y axis
+        pyplot.ylabel('episode reward')
+
+        # title
+        pyplot.title('Episode reward')
+
+        # PLOT NR OF LINES
+        pyplot.subplot(133)
+        x = df_results['nr_episode']
+        y = df_results['nr_lines_sum']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('episodes')
+        # naming the y axis
+        pyplot.ylabel('nr_of_lines')
+
+        # title
+        pyplot.title('Number of lines per episode')
+
+        # show the plots
+        pyplot.show()
