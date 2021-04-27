@@ -111,10 +111,10 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=200, visualise=True)
+    agent.train(nb_steps=1000, visualise=True)
 
     # test the agent
-    agent.test(nb_episodes=2)
+    agent.test(nb_episodes=5)
 
     # save the agent
     #agent.save()

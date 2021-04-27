@@ -327,28 +327,37 @@ class TetrisEngine:
         history = history
 
         # init plot
-        figure = pyplot.figure(figsize=(10, 5), dpi=80)
+        figure = pyplot.figure(figsize=(20, 10), dpi=80)
         figure.canvas.set_window_title(mode)
 
-        # @TODO axes are not correct
         # PLOT EPISODE REWARD
         pyplot.subplot(131)
-        x = history.history['nb_steps']
-        y = history.history['episode_reward']
 
-        # plotting the points
-        pyplot.plot(x, y)
+        # data (the dict keys are different for training and test)
+        if mode == 'training':
+            episode_key = 'nb_episode_steps'
+        else:
+            episode_key = 'nb_steps'
 
-        # naming the x axis
-        pyplot.xlabel('nb of steps per episode')
+        y_1 = history.history[episode_key]
+        y_2 = history.history['episode_reward']
+        ind = np.arange(len(y_1))
 
-        # naming the y axis
-        pyplot.ylabel('episode reward')
+        # bars
+        width = 0.35       # the width of the bars
+        pyplot.bar(ind, y_1, width, color='g', label='nb_episode_steps')
+        pyplot.ylabel('nr steps per episode')
+        pyplot.xlabel('episode')
+
+        # line
+        axes2 = pyplot.twinx()
+        axes2.plot(ind, y_2, color='k', label='episode_reward')
+        axes2.set_ylabel('episode reward')
 
         # title
-        pyplot.title(mode + ' Episode reward')
+        pyplot.title(mode + ': episode reward and steps per episode')
 
-        # PLOT NR OF LINES
+        # PLOT NR OF LINES CLEARED PER EPISODE
         pyplot.subplot(133)
         x = df_results['nr_episode']
         y = df_results['nr_lines_sum']
@@ -362,7 +371,7 @@ class TetrisEngine:
         pyplot.ylabel('nr_of_lines')
 
         # title
-        pyplot.title(mode + ' number of lines per episode')
+        pyplot.title(mode + ': number of lines per episode')
 
         # show the plots
         pyplot.show()
