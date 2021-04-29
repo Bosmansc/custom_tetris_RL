@@ -7,6 +7,7 @@ from PIL import Image
 import cv2
 import pandas as pd
 from matplotlib import pyplot
+from time import sleep
 import matplotlib.pyplot as plt
 
 shapes = {
@@ -15,11 +16,11 @@ shapes = {
     #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-      'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
-    'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
+    #   'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+      'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
 shape_names = [  # 'J', 'L', 'Z', 'S',
-     'I',
+     # 'I',
     'O']
 
 colors = {
@@ -217,8 +218,10 @@ class TetrisEngine:
         new_block = False
 
         lines_cleared = 0
+        lowest_pos_last_block = 0
         if self._has_dropped():
             self._set_piece(True)
+            lowest_pos_last_block = self._lowest_pos_last_block()
             lines_cleared = self._clear_lines()
             self.number_of_lines += lines_cleared
             if np.any(self.board[:, 0]):
@@ -237,7 +240,7 @@ class TetrisEngine:
             height_difference = old_height - height(state)
         else:
             height_difference = 0
-        self._calculate_reward(height_difference, new_block, lines_cleared)
+        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block)
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
@@ -248,6 +251,10 @@ class TetrisEngine:
 
         # keep track of the results
         self.df_info = self.df_info.append(info, ignore_index=True)
+
+        # print(f'\n action: {action}, reward: {reward}')
+        # print(f'\n height diff: {height_difference}, new_block: {new_block}, lines_cleared: {lines_cleared}')
+        # print(f'\n state: \n {state}')
 
         return state, reward, done, info
 
@@ -267,17 +274,27 @@ class TetrisEngine:
         self.clear()
         self.__init__()
 
-    def _calculate_reward(self, height_difference, new_block, lines_cleared):
+    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
         if new_block and height_difference == 0:
-            self.score = 10  # reward for keeping height low
+            self.score = 5  # reward for keeping height low
+            if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
+                self.score += 5
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
             x, y = i + self.anchor[0], j + self.anchor[1]
-            if x < self.width and x >= 0 and y < self.height and y >= 0:
+            if self.width > x >= 0 and self.height > y >= 0:
                 self.board[int(self.anchor[0] + i), int(self.anchor[1] + j)] = on
+
+    def _lowest_pos_last_block(self):
+        lowest_pos = 0
+        for i, j in self.shape:
+            y = j + self.anchor[1]
+            if y > lowest_pos:
+                lowest_pos = y
+        return lowest_pos
 
     def __repr__(self):
         self._set_piece(True)
@@ -300,6 +317,7 @@ class TetrisEngine:
         img = np.array(img)
         cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
         cv2.imshow('image', np.array(img))
+        sleep(0.1)
         cv2.waitKey(1)
 
     def results(self):

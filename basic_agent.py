@@ -19,13 +19,13 @@ class BasicAgent():
             # Loop that keeps making moves as long as the game hasn't ended yet
             while not done:
                 # Picks a random action
-                action = random.randint(0,5)
+                action = random.randint(0, 5)
                 action = 5
                 # Performs the action in the game engine
                 next_state, reward, done, info = self.env.step(action)
                 # Render the game state
                 self.env.render()
-                # Sleep to make sure a human can follow the gameplay (if you're not rendering, this isn't neccessary of course)
+                # Sleep to make sure a human can follow the gameplay
                 sleep(0.05)
                     
                     

@@ -1,5 +1,7 @@
-import random
+import warnings
+warnings.filterwarnings("ignore")
 
+import random
 from time import sleep
 from time import time
 from engine import TetrisEngine
@@ -14,13 +16,14 @@ from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 from matplotlib import pyplot
+import tensorflow.python.util.deprecation as deprecation
+deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 ## use pip install --upgrade --force-reinstall  git+https://github.com/Bosmansc/tetris_openai.git
 ## not pip install  pip install keras-rl2, this is not compatible with the custom tetris environment
 
 from rl.agents import DQNAgent
-from rl.policy import BoltzmannQPolicy
-from rl.policy import GreedyQPolicy
+from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy, GreedyQPolicy
 from rl.memory import SequentialMemory
 
 
@@ -48,7 +51,7 @@ class Agent:
         # init Neural network
         actions = 6  # there are 6 discrete actions
         model = self.build_model_conv(actions)
-        # model.summary()
+        model.summary()
 
         # init and fit the agent
         dqn = self.build_agent(model, actions)
@@ -66,9 +69,8 @@ class Agent:
     @timer
     def test(self, nb_episodes=10, visualize=True):
         self.env.reset_environment()
-        history_test = self.agent.test(self.env, nb_episodes=nb_episodes, visualize=visualize
-                                       , nb_max_episode_steps=300
-                                       )
+        history_test = self.agent.test(self.env, nb_episodes=nb_episodes, visualize=visualize,
+                                       nb_max_episode_steps=300)
 
         print(np.mean(history_test.history['episode_reward']))
 
@@ -78,13 +80,12 @@ class Agent:
     def save(self, name):
         self.agent.save_weights(f'models/{name}.model', overwrite=False)
 
-    @staticmethod
-    def build_model_conv(actions):
+    def build_model_conv(self, actions):
         # Network defined by the Deepmind paper
         model = tf.keras.models.Sequential()
 
         model.add(Conv2D(32, (3, 3), padding='same', kernel_initializer='he_uniform',
-                         kernel_constraint=max_norm(4), input_shape=(1, 16, 6)))
+                         kernel_constraint=max_norm(4), input_shape=(1, self.env.height, self.env.width)))
         model.add(BatchNormalization())
         model.add(Activation('relu'))
 
@@ -112,11 +113,11 @@ class Agent:
 
     @staticmethod
     def build_agent(model, actions):
-        # policy = GreedyQPolicy() ## hyperparm, GreedyQPolicy is used in paper: https://www.elen.ucl.ac.be/Proceedings/esann/esannpdf/es2008-118.pdf
-        policy = BoltzmannQPolicy()
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=0,
+                                      value_test=0, nb_steps=8000)
         memory = SequentialMemory(limit=50000, window_length=1)
-        build_agent = DQNAgent(model=model, memory=memory, policy=policy,
-                               nb_actions=actions, nb_steps_warmup=100, target_model_update=1e-2)
+        build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=.8, batch_size=32,
+                               nb_actions=actions, nb_steps_warmup=100, target_model_update=250)
         return build_agent
 
 
@@ -124,10 +125,10 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=100, visualise=False)
+    agent.train(nb_steps=10000, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=2)
+    agent.test(nb_episodes=5)
 
     # save the agent
     agent.save('two_20000')
