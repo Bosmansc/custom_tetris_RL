@@ -1,2 +1,2 @@
-model_checkpoint_path: "dqn_model_one_line.model"
-all_model_checkpoint_paths: "dqn_model_one_line.model"
+model_checkpoint_path: "two_20000.model"
+all_model_checkpoint_paths: "two_20000.model"

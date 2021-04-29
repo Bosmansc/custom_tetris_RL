@@ -1,6 +1,7 @@
 import random
 
 from time import sleep
+from time import time
 from engine import TetrisEngine
 import tensorflow as tf
 import numpy as np
@@ -23,12 +24,23 @@ from rl.policy import GreedyQPolicy
 from rl.memory import SequentialMemory
 
 
-class Agent():
+def timer(func):
+    def f(*args, **kwargs):
+        before = time()
+        rv = func(*args, **kwargs)
+        after = time()
+        print('function ' + func.__name__ + ' took ' + str(round(after - before, 2)) + ' seconds')
+        return rv
+    return f
+
+
+class Agent:
     def __init__(self):
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine()
         self.agent = None
 
+    @timer
     def train(self, nb_steps=1000, visualise=True):
         # Resets the environment
         self.env.reset_environment()
@@ -51,6 +63,7 @@ class Agent():
 
         return dqn
 
+    @timer
     def test(self, nb_episodes=10, visualize=True):
         self.env.reset_environment()
         history_test = self.agent.test(self.env, nb_episodes=nb_episodes, visualize=visualize
@@ -62,8 +75,8 @@ class Agent():
         # plot the results
         self.env.plot_results(history_test, 'test')
 
-    def save(self):
-        self.agent.save_weights('models/dqn_model.model', overwrite=False)
+    def save(self, name):
+        self.agent.save_weights(f'models/{name}.model', overwrite=False)
 
     @staticmethod
     def build_model_conv(actions):
@@ -111,10 +124,10 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=True)
+    agent.train(nb_steps=100, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=5)
+    agent.test(nb_episodes=2)
 
     # save the agent
-    #agent.save()
+    agent.save('two_20000')
