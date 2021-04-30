@@ -65,7 +65,7 @@ def build_callbacks():
 
 
 def plot_logging(df, key, index):
-    pyplot.subplot(3, 3, index + 1)
+    pyplot.subplot(4, 3, index + 1)
     pyplot.subplots_adjust(hspace=0.5)
 
     y = df[key]
@@ -88,9 +88,13 @@ class Agent:
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine()
         self.agent = None
+
+        # hyperparameters:
         self.LEARNING_RATE = 1e-3
         self.GAMMA = 0.8  # gamma defines penalty for future reward
         self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
+        self.EPSILON_START = 1
+        self.EPSILON_END = 0.1
 
     @timer
     def train(self, nb_steps=1000, visualise=True):
@@ -107,7 +111,7 @@ class Agent:
 
         # init and fit the agent
         dqn = self.build_agent(model, actions, nb_steps)
-        dqn.compile(Adam(lr=self.LEARNING_RATE), metrics=['mae'])
+        dqn.compile(Adam(lr=self.LEARNING_RATE), metrics=['mae', 'mse'])
         history_training = dqn.fit(self.env,
                                    nb_steps=nb_steps,
                                    callbacks=callbacks,
@@ -184,13 +188,13 @@ class Agent:
         """
         policy = LinearAnnealedPolicy(EpsGreedyQPolicy(),  # takes current best action with prob (1 - epsilon)
                                       attr='eps',  # decay epsilon (=exploration) per agent step
-                                      value_max=1.,  # start with value of 1
-                                      value_min=0,  # don't go smaller than 0
+                                      value_max=self.EPSILON_START,  # start value of epsilon (default =1)
+                                      value_min=self.EPSILON_END,  # last value of epsilon (default =0
                                       value_test=0,
                                       nb_steps=nb_steps)
         memory = SequentialMemory(limit=50000, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=100, target_model_update=250)
+                               nb_actions=actions, nb_steps_warmup=100, target_model_update=500)
         return build_agent
 
 
@@ -198,7 +202,7 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=False)
+    agent.train(nb_steps=5000, visualise=False)
 
     # test the agent
     agent.test(nb_episodes=3)
@@ -207,4 +211,4 @@ if __name__ == '__main__':
     # agent.save('only_square_10000.model')
 
     # plot the logs
-    plot_logs(save_fig=False)
+    plot_logs(save_fig=True)
