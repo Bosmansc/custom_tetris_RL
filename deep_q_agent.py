@@ -1,9 +1,10 @@
 import warnings
+
 warnings.filterwarnings("ignore")
 
 import random
 from time import sleep
-from time import time
+import time
 from engine import TetrisEngine
 import tensorflow as tf
 import numpy as np
@@ -17,6 +18,9 @@ from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 from matplotlib import pyplot
 import tensorflow.python.util.deprecation as deprecation
+import json
+import pandas as pd
+
 deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 ## use pip install --upgrade --force-reinstall  git+https://github.com/Bosmansc/tetris_openai.git
@@ -25,16 +29,58 @@ deprecation._PRINT_DEPRECATION_WARNINGS = False
 from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy, GreedyQPolicy
 from rl.memory import SequentialMemory
+from rl.callbacks import ModelIntervalCheckpoint, FileLogger
 
 
 def timer(func):
     def f(*args, **kwargs):
-        before = time()
+        before = time.time()
         rv = func(*args, **kwargs)
-        after = time()
+        after = time.time()
         print('function ' + func.__name__ + ' took ' + str(round(after - before, 2)) + ' seconds')
         return rv
+
     return f
+
+
+def plot_logs(save_fig=False):
+    # plot the logs
+    with open('dqn_log.json') as json_file:
+        data = json.load(json_file)
+    df_log = pd.DataFrame.from_dict(data)
+    for idx, col in enumerate(df_log.columns):
+        plot_logging(df_log, col, idx)
+    pyplot.show()
+    timestr = time.strftime("%m%d_%H%M%S")
+    if save_fig:
+        pyplot.savefig("logs/img_logs_" + timestr)
+
+
+def build_callbacks():
+    checkpoint_weights_filename = 'model_checkpoints/dqn_weights_.h5f'
+    log_filename = 'dqn_log.json'
+    callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=500)]
+    callbacks += [FileLogger(log_filename, interval=100)]
+    return callbacks
+
+
+def plot_logging(df, key, index):
+    pyplot.subplot(3, 3, index + 1)
+    pyplot.subplots_adjust(hspace=0.5)
+
+    y = df[key]
+    x = df['episode']
+
+    # plotting the points
+    pyplot.plot(x, y)
+
+    # naming the x axis
+    pyplot.xlabel('episode nr')
+    # naming the y axis
+    pyplot.ylabel(key.replace('_', ' '))
+
+    # title
+    pyplot.title(key.replace('_', ' '))
 
 
 class Agent:
@@ -42,6 +88,9 @@ class Agent:
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine()
         self.agent = None
+        self.LEARNING_RATE = 1e-3
+        self.GAMMA = 0.8  # gamma defines penalty for future reward
+        self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
 
     @timer
     def train(self, nb_steps=1000, visualise=True):
@@ -53,10 +102,16 @@ class Agent:
         model = self.build_model_conv(actions)
         model.summary()
 
+        # define callbacks
+        callbacks = build_callbacks()
+
         # init and fit the agent
-        dqn = self.build_agent(model, actions)
-        dqn.compile(Adam(lr=1e-3), metrics=['mae'])
-        history_training = dqn.fit(self.env, nb_steps=nb_steps, visualize=visualise)
+        dqn = self.build_agent(model, actions, nb_steps)
+        dqn.compile(Adam(lr=self.LEARNING_RATE), metrics=['mae'])
+        history_training = dqn.fit(self.env,
+                                   nb_steps=nb_steps,
+                                   callbacks=callbacks,
+                                   visualize=visualise)
 
         # plot the results
         self.env.plot_results(history_training, 'training')
@@ -111,12 +166,30 @@ class Agent:
 
         return model
 
-    @staticmethod
-    def build_agent(model, actions):
-        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., value_min=0,
-                                      value_test=0, nb_steps=8000)
+    def build_agent(self, model, actions, nb_steps):
+        """
+        GAMMA:
+        REWARD = r1 + gamma*r2 + gamma^2*r3 + gamma^3*r4 ...
+        -> gamma defines penalty for future reward
+        In general, most algorithms learn faster when they don't have to look too far into the future.
+        So, it sometimes helps the performance to set gamma relatively low.
+        for many problems a gamma of 0.9 or 0.95 is fine
+
+        LAMBDA:
+        The lambda parameter determines how much you bootstrap on earlier learned value versus using
+        the current Monte Carlo roll-out. This implies a trade-off between more bias (low lambda)
+        and more variance (high lambda).
+        A general rule of thumb is to use a lambda equal to 0.9.
+        However, it might be good just to try a few settings (e.g., 0, 0.5, 0.8, 0.9, 0.95 and 1.0)
+        """
+        policy = LinearAnnealedPolicy(EpsGreedyQPolicy(),  # takes current best action with prob (1 - epsilon)
+                                      attr='eps',  # decay epsilon (=exploration) per agent step
+                                      value_max=1.,  # start with value of 1
+                                      value_min=0,  # don't go smaller than 0
+                                      value_test=0,
+                                      nb_steps=nb_steps)
         memory = SequentialMemory(limit=50000, window_length=1)
-        build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=.8, batch_size=32,
+        build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
                                nb_actions=actions, nb_steps_warmup=100, target_model_update=250)
         return build_agent
 
@@ -125,10 +198,13 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=10000, visualise=False)
+    agent.train(nb_steps=1000, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=5)
+    agent.test(nb_episodes=3)
 
     # save the agent
-    agent.save('two_20000')
+    # agent.save('only_square_10000.model')
+
+    # plot the logs
+    plot_logs(save_fig=False)

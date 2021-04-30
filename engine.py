@@ -317,7 +317,7 @@ class TetrisEngine:
         img = np.array(img)
         cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
         cv2.imshow('image', np.array(img))
-        sleep(0.1)
+        # sleep(0.1)
         cv2.waitKey(1)
 
     def results(self):
@@ -366,13 +366,16 @@ class TetrisEngine:
         pyplot.bar(ind, y_1, width, color='g', label='nb_episode_steps')
         pyplot.ylabel('nr steps per episode')
         pyplot.xlabel('episode')
+        pyplot.legend(loc="upper left")
 
         # line
         axes2 = pyplot.twinx()
         axes2.plot(ind, y_2, color='k', label='episode_reward')
         axes2.set_ylabel('episode reward')
+        pyplot.legend(loc="upper right")
 
-        # title
+
+    # title
         pyplot.title(mode + ': episode reward and steps per episode')
 
         # PLOT NR OF LINES CLEARED PER EPISODE
