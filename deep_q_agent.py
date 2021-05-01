@@ -5,7 +5,6 @@ warnings.filterwarnings("ignore")
 import random
 from time import sleep
 import time
-from engine import TetrisEngine
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.datasets import mnist
@@ -31,6 +30,10 @@ from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy, GreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.callbacks import ModelIntervalCheckpoint, FileLogger
 
+from engine import TetrisEngine
+from custom_logging import plot_custom_results
+from custom_logging import plot_metrics
+
 
 def timer(func):
     def f(*args, **kwargs):
@@ -43,44 +46,12 @@ def timer(func):
     return f
 
 
-def plot_logs(save_fig=False):
-    # plot the logs
-    with open('dqn_log.json') as json_file:
-        data = json.load(json_file)
-    df_log = pd.DataFrame.from_dict(data)
-    for idx, col in enumerate(df_log.columns):
-        plot_logging(df_log, col, idx)
-    timestr = time.strftime("%m%d_%H%M%S")
-    if save_fig:
-        pyplot.savefig("logs/img_logs_" + timestr)
-    pyplot.show()
-
-
 def build_callbacks():
     checkpoint_weights_filename = 'model_checkpoints/dqn_weights_.h5f'
     log_filename = 'dqn_log.json'
     callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=500)]
     callbacks += [FileLogger(log_filename, interval=100)]
     return callbacks
-
-
-def plot_logging(df, key, index):
-    pyplot.subplot(4, 3, index + 1)
-    pyplot.subplots_adjust(hspace=0.5)
-
-    y = df[key]
-    x = df['episode']
-
-    # plotting the points
-    pyplot.plot(x, y)
-
-    # naming the x axis
-    pyplot.xlabel('episode nr')
-    # naming the y axis
-    pyplot.ylabel(key.replace('_', ' '))
-
-    # title
-    pyplot.title(key.replace('_', ' '))
 
 
 class Agent:
@@ -95,6 +66,9 @@ class Agent:
         self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
         self.EPSILON_START = 1
         self.EPSILON_END = 0.1
+        self.TARGET_MODEL_UPDATE = 500    # default is 10000
+        self.EPSILON_TEST = 0
+        self.SEQUENTIAL_MEMORY_LIMIT = 50000
 
     @timer
     def train(self, nb_steps=1000, visualise=True):
@@ -118,7 +92,7 @@ class Agent:
                                    visualize=visualise)
 
         # plot the results
-        self.env.plot_results(history_training, 'training')
+        plot_custom_results(self.env.df_info, history_training, mode='training')
 
         # save trained agent
         self.agent = dqn
@@ -134,7 +108,7 @@ class Agent:
         print(np.mean(history_test.history['episode_reward']))
 
         # plot the results
-        self.env.plot_results(history_test, 'test')
+        plot_custom_results(self.env.df_info, history_test, mode='test')
 
     def save(self, name):
         self.agent.save_weights(f'models/{name}.model', overwrite=False)
@@ -190,11 +164,11 @@ class Agent:
                                       attr='eps',  # decay epsilon (=exploration) per agent step
                                       value_max=self.EPSILON_START,  # start value of epsilon (default =1)
                                       value_min=self.EPSILON_END,  # last value of epsilon (default =0
-                                      value_test=0,
+                                      value_test=self.EPSILON_TEST,
                                       nb_steps=nb_steps)
-        memory = SequentialMemory(limit=50000, window_length=1)
+        memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=100, target_model_update=500)
+                               nb_actions=actions, nb_steps_warmup=100, target_model_update=self.TARGET_MODEL_UPDATE)
         return build_agent
 
 
@@ -202,13 +176,13 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=5000, visualise=True)
+    agent.train(nb_steps=100, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=3)
+    agent.test(nb_episodes=1)
 
     # save the agent
     # agent.save('only_square_10000.model')
 
     # plot the logs
-    plot_logs(save_fig=True)
+    plot_metrics(save_fig=False)

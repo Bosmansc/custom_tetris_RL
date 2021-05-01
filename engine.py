@@ -260,7 +260,7 @@ class TetrisEngine:
         # print(f'\n height diff: {height_difference}, new_block: {new_block}, lines_cleared: {lines_cleared}')
         # print(f'\n state: \n {state}')
 
-        print("the reward of this step is: " + str(reward))
+        # print("the reward of this step is: " + str(reward))
         return state, reward, done, info
 
     def clear(self):
@@ -323,7 +323,7 @@ class TetrisEngine:
         img = np.array(img)
         cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
         cv2.imshow('image', np.array(img))
-        sleep(0.5)
+        # sleep(0.5)
         cv2.waitKey(1)
 
     def results(self):
