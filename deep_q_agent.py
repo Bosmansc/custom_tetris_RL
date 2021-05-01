@@ -50,10 +50,10 @@ def plot_logs(save_fig=False):
     df_log = pd.DataFrame.from_dict(data)
     for idx, col in enumerate(df_log.columns):
         plot_logging(df_log, col, idx)
-    pyplot.show()
     timestr = time.strftime("%m%d_%H%M%S")
     if save_fig:
         pyplot.savefig("logs/img_logs_" + timestr)
+    pyplot.show()
 
 
 def build_callbacks():
@@ -90,8 +90,8 @@ class Agent:
         self.agent = None
 
         # hyperparameters:
-        self.LEARNING_RATE = 1e-3
-        self.GAMMA = 0.8  # gamma defines penalty for future reward
+        self.LEARNING_RATE = 0.1    # default = 0.001
+        self.GAMMA = 0.9  # gamma defines penalty for future reward
         self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
         self.EPSILON_START = 1
         self.EPSILON_END = 0.1
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=5000, visualise=False)
+    agent.train(nb_steps=5000, visualise=True)
 
     # test the agent
     agent.test(nb_episodes=3)

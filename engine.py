@@ -16,11 +16,11 @@ shapes = {
     #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-    #   'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+       'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
       'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
 shape_names = [  # 'J', 'L', 'Z', 'S',
-     # 'I',
+      'I',
     'O']
 
 colors = {
@@ -147,7 +147,7 @@ class TetrisEngine:
         self.nb_actions = len(self.value_action_map)
 
         # for running the engine
-        self.score = -1
+        self.score = 0
         self.anchor = None
         self.shape = None
         self.n_deaths = 0
@@ -187,12 +187,16 @@ class TetrisEngine:
                 j -= 1
 
         if sum(can_clear) == 1:
+            print("update the score to " + str(self.score))
             self.score += 40
         elif sum(can_clear) == 2:
+            print("update the score to " + str(self.score))
             self.score += 100
         elif sum(can_clear) == 3:
+            print("update the score to " + str(self.score))
             self.score += 300
         elif sum(can_clear) == 4:
+            print("update the score to " + str(self.score))
             self.score += 1200
         self.board = new_board
 
@@ -256,6 +260,7 @@ class TetrisEngine:
         # print(f'\n height diff: {height_difference}, new_block: {new_block}, lines_cleared: {lines_cleared}')
         # print(f'\n state: \n {state}')
 
+        print("the reward of this step is: " + str(reward))
         return state, reward, done, info
 
     def clear(self):
@@ -276,9 +281,10 @@ class TetrisEngine:
 
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
         if new_block and height_difference == 0:
-            self.score = 5  # reward for keeping height low
-            if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
-                self.score += 5
+            pass
+            #self.score = 5  # reward for keeping height low
+            #if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
+            #    self.score += 5
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
@@ -317,7 +323,7 @@ class TetrisEngine:
         img = np.array(img)
         cv2.putText(img, str(self.score), (22, 22), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 1)
         cv2.imshow('image', np.array(img))
-        # sleep(0.1)
+        sleep(0.5)
         cv2.waitKey(1)
 
     def results(self):
@@ -393,6 +399,10 @@ class TetrisEngine:
 
         # title
         pyplot.title(mode + ': number of lines per episode')
+
+        # save the plots
+        timestr = time.strftime("%m%d_%H%M%S")
+        pyplot.savefig("logs/img_info_" + timestr)
 
         # show the plots
         pyplot.show()
