@@ -29,13 +29,13 @@ from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy, GreedyQPolicy
 from rl.memory import SequentialMemory
 from rl.callbacks import ModelIntervalCheckpoint, FileLogger
-
 from engine import TetrisEngine
-from custom_logging import plot_custom_results
-from custom_logging import plot_metrics
 
 
 def timer(func):
+    """
+    method used as wrapper to time functions
+    """
     def f(*args, **kwargs):
         before = time.time()
         rv = func(*args, **kwargs)
@@ -47,6 +47,9 @@ def timer(func):
 
 
 def build_callbacks():
+    """
+    callbacks for the deep q agent
+    """
     checkpoint_weights_filename = 'model_checkpoints/dqn_weights_.h5f'
     log_filename = 'dqn_log.json'
     callbacks = [ModelIntervalCheckpoint(checkpoint_weights_filename, interval=500)]
@@ -61,17 +64,24 @@ class Agent:
         self.agent = None
 
         # hyperparameters:
-        self.LEARNING_RATE = 0.1    # default = 0.001
+        self.LEARNING_RATE = 0.01  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
         self.GAMMA = 0.9  # gamma defines penalty for future reward
         self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
         self.EPSILON_START = 1
-        self.EPSILON_END = 0.1
-        self.TARGET_MODEL_UPDATE = 500    # default is 10000
-        self.EPSILON_TEST = 0
+        self.EPSILON_END = 0.2
+        self.TARGET_MODEL_UPDATE = 1000  # default is 10000
+        self.EPSILON_TEST = 0.1
         self.SEQUENTIAL_MEMORY_LIMIT = 50000
+
+        # target model update in source code:
+        # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
+        # -> I think that the total steps have to be multiple of target_model_update to work
 
     @timer
     def train(self, nb_steps=1000, visualise=True):
+        """
+        the training process of the deep Q agent
+        """
         # Resets the environment
         self.env.reset_environment()
 
@@ -89,10 +99,11 @@ class Agent:
         history_training = dqn.fit(self.env,
                                    nb_steps=nb_steps,
                                    callbacks=callbacks,
-                                   visualize=visualise)
+                                   visualize=visualise,
+                                   log_interval=self.TARGET_MODEL_UPDATE)
 
         # plot the results
-        plot_custom_results(self.env.df_info, history_training, mode='training')
+        self._plot_custom_results(self.env.df_info, history_training, mode='training')
 
         # save trained agent
         self.agent = dqn
@@ -101,6 +112,9 @@ class Agent:
 
     @timer
     def test(self, nb_episodes=10, visualize=True):
+        """
+        The testing process of the deep q agent
+        """
         self.env.reset_environment()
         history_test = self.agent.test(self.env, nb_episodes=nb_episodes, visualize=visualize,
                                        nb_max_episode_steps=300)
@@ -108,12 +122,18 @@ class Agent:
         print(np.mean(history_test.history['episode_reward']))
 
         # plot the results
-        plot_custom_results(self.env.df_info, history_test, mode='test')
+        self._plot_custom_results(self.env.df_info, history_test, mode='test')
 
     def save(self, name):
+        """
+        saving the model weights for future use
+        """
         self.agent.save_weights(f'models/{name}.model', overwrite=False)
 
     def build_model_conv(self, actions):
+        """
+        define the neural network model architecture for the deep q agent
+        """
         # Network defined by the Deepmind paper
         model = tf.keras.models.Sequential()
 
@@ -146,6 +166,8 @@ class Agent:
 
     def build_agent(self, model, actions, nb_steps):
         """
+        building the deep q agent
+
         GAMMA:
         REWARD = r1 + gamma*r2 + gamma^2*r3 + gamma^3*r4 ...
         -> gamma defines penalty for future reward
@@ -168,21 +190,192 @@ class Agent:
                                       nb_steps=nb_steps)
         memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=100, target_model_update=self.TARGET_MODEL_UPDATE)
+                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE)
         return build_agent
+
+    def _plot_custom_results(self, df, history, mode='training'):
+        """
+        plot custom results
+        """
+        # input data
+        if 'new_episode' not in df:
+            raise KeyError('the dataframe has to have the new_episode column to plot the results')
+        df["nr_episode"] = df["new_episode"].cumsum()
+
+        df_results = df.groupby('nr_episode', as_index=False) \
+            .agg(heigt_diff_sum=('height_difference', 'sum'),
+                 new_block_sum=('new_block', 'sum'),
+                 nr_lines_sum=('number_of_lines', 'sum'),
+                 score_sum=('score', 'sum'),
+                 score_avg=('score', 'mean'),
+                 count_steps=('nr_episode', 'count'))
+
+        df_results['moving_average_score'] = df_results.score_sum.expanding().mean()
+        df_results['moving_average_lines'] = df_results.nr_lines_sum.expanding().mean()
+
+        # init plot
+        figure = pyplot.figure(figsize=(20, 10), dpi=80)
+        figure.canvas.set_window_title(mode)
+
+        # PLOT 1: EPISODE REWARD
+        pyplot.subplot(221)
+
+        # data (the dict keys are different for training and test)
+        if mode == 'training':
+            episode_key = 'nb_episode_steps'
+        else:
+            episode_key = 'nb_steps'
+
+        y_1 = history.history[episode_key]
+        y_2 = history.history['episode_reward']
+        ind = np.arange(len(y_1))
+
+        # bars
+        width = 0.35  # the width of the bars
+        pyplot.bar(ind, y_1, width, color='g', label='nb_episode_steps')
+        pyplot.ylabel('nr steps per episode')
+        pyplot.xlabel('episode')
+        pyplot.legend(loc="upper left")
+
+        # line
+        axes2 = pyplot.twinx()
+        axes2.plot(ind, y_2, color='k', label='episode_reward')
+        axes2.set_ylabel('episode reward')
+        pyplot.legend(loc="upper right")
+
+        # title
+        pyplot.title(mode + ': episode reward and steps per episode')
+
+        # PLOT 2: NR OF LINES CLEARED PER EPISODE
+        pyplot.subplot(222)
+        x = df_results['nr_episode']
+        y = df_results['nr_lines_sum']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('episodes')
+        # naming the y axis
+        pyplot.ylabel('nr_of_lines')
+
+        # title
+        pyplot.title(mode + ': number of lines per episode')
+
+        # save the plots
+        timestr = time.strftime("%m%d_%H%M%S")
+        pyplot.savefig("logs/img_info_" + timestr)
+
+        # PLOT 3: MOVING AVERAGE TOTAL SCORE
+        pyplot.subplot(223)
+        x = df_results['nr_episode']
+        y = df_results['moving_average_score']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('episodes')
+        # naming the y axis
+        pyplot.ylabel('moving average total score')
+
+        # title
+        pyplot.title(mode + ': moving average total score')
+
+        # PLOT 4: MOVING AVERAGE LINES CLEARED
+        pyplot.subplot(224)
+        x = df_results['nr_episode']
+        y = df_results['moving_average_lines']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('episodes')
+        # naming the y axis
+        pyplot.ylabel('moving average total score')
+
+        self.LEARNING_RATE = 0.01  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
+        self.GAMMA = 0.9  # gamma defines penalty for future reward
+        self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
+        self.EPSILON_START = 1
+        self.EPSILON_END = 0.2
+        self.TARGET_MODEL_UPDATE = 1000  # default is 10000
+        self.EPSILON_TEST = 0.1
+        self.SEQUENTIAL_MEMORY_LIMIT = 50000
+
+        # add subtitle with hyperparams
+        subtitile = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
+                    f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
+        plt.figtext(0.01, 0.01, subtitile, fontsize=15)
+
+        # title
+        pyplot.title(mode + ': moving average nr of lines')
+
+        # save the plots
+        timestr = time.strftime("%m%d_%H%M%S")
+        pyplot.savefig("logs/img_info_" + timestr)
+
+        # show the plots
+        pyplot.show()
+        pyplot.close()
+
+    def plot_metrics(self, save_fig=False):
+        """
+        plot the callback metrics
+        """
+        # plot the logs
+        with open('dqn_log.json') as json_file:
+            data = json.load(json_file)
+        df_log = pd.DataFrame.from_dict(data)
+        for idx, col in enumerate(df_log.columns):
+            self._combine_metrics(df_log, col, idx)
+
+        # add subtitle
+        subtitle = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
+                    f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
+        pyplot.figtext(0.01, 0.01, subtitle, fontsize=15)
+
+        # save fig
+        timestr = time.strftime("%m%d_%H%M%S")
+        if save_fig:
+            pyplot.savefig("logs/img_logs_" + timestr)
+        pyplot.show()
+
+    @staticmethod
+    def _combine_metrics(df, key, index):
+        """
+        helper method for the plot_metrics function
+        """
+        pyplot.subplot(4, 3, index + 1)
+        pyplot.subplots_adjust(hspace=0.5)
+
+        y = df[key]
+        x = df['episode']
+
+        # plotting the points
+        pyplot.plot(x, y)
+
+        # naming the x axis
+        pyplot.xlabel('episode nr')
+        # naming the y axis
+        pyplot.ylabel(key.replace('_', ' '))
+
+        # title
+        pyplot.title(key.replace('_', ' '))
 
 
 if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=100, visualise=False)
+    agent.train(nb_steps=1000, visualise=True)
 
     # test the agent
     agent.test(nb_episodes=1)
 
     # save the agent
-    # agent.save('only_square_10000.model')
+    # agent.save('square_and_rect_1000000_0205.model')
 
     # plot the logs
-    plot_metrics(save_fig=False)
+    agent.plot_metrics(save_fig=False)

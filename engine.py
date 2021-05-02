@@ -187,16 +187,16 @@ class TetrisEngine:
                 j -= 1
 
         if sum(can_clear) == 1:
-            print("update the score to " + str(self.score))
+            #print("update the score to " + str(self.score))
             self.score += 40
         elif sum(can_clear) == 2:
-            print("update the score to " + str(self.score))
+            #print("update the score to " + str(self.score))
             self.score += 100
         elif sum(can_clear) == 3:
-            print("update the score to " + str(self.score))
+            #print("update the score to " + str(self.score))
             self.score += 300
         elif sum(can_clear) == 4:
-            print("update the score to " + str(self.score))
+            #print("update the score to " + str(self.score))
             self.score += 1200
         self.board = new_board
 
@@ -282,9 +282,9 @@ class TetrisEngine:
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
         if new_block and height_difference == 0:
             pass
-            #self.score = 5  # reward for keeping height low
-            #if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
-            #    self.score += 5
+            self.score = 5  # reward for keeping height low
+            if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
+                self.score += 5
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
