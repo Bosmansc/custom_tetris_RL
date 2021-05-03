@@ -16,11 +16,11 @@ shapes = {
     #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-       'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+    #    'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
       'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
 shape_names = [  # 'J', 'L', 'Z', 'S',
-      'I',
+      # 'I',
     'O']
 
 colors = {
@@ -187,18 +187,17 @@ class TetrisEngine:
                 j -= 1
 
         if sum(can_clear) == 1:
-            #print("update the score to " + str(self.score))
             self.score += 40
         elif sum(can_clear) == 2:
-            #print("update the score to " + str(self.score))
             self.score += 100
         elif sum(can_clear) == 3:
-            #print("update the score to " + str(self.score))
             self.score += 300
         elif sum(can_clear) == 4:
-            #print("update the score to " + str(self.score))
             self.score += 1200
         self.board = new_board
+
+        if sum(can_clear) > 0:
+            print(f' - Cleared {sum(can_clear)} lines')
 
         return sum(can_clear)
 
@@ -326,84 +325,3 @@ class TetrisEngine:
         # sleep(0.5)
         cv2.waitKey(1)
 
-    def results(self):
-        df_results = pd.DataFrame()
-
-        if not self.df_info.empty:
-            self.df_info["nr_episode"] = self.df_info["new_episode"].cumsum()
-
-            df_results = self.df_info.groupby('nr_episode', as_index=False) \
-                .agg(heigt_diff_sum=('height_difference', 'sum'),
-                     new_block_sum=('new_block', 'sum'),
-                     nr_lines_sum=('number_of_lines', 'sum'),
-                     score_sum=('score', 'sum'),
-                     score_avg=('score', 'mean'),
-                     count_steps=('nr_episode', 'count'))
-
-        else:
-            print("There are no results yet!")
-
-        return df_results
-
-    def plot_results(self, history, mode='training'):
-        # input data
-        df_results = self.results()
-        history = history
-
-        # init plot
-        figure = pyplot.figure(figsize=(20, 10), dpi=80)
-        figure.canvas.set_window_title(mode)
-
-        # PLOT EPISODE REWARD
-        pyplot.subplot(131)
-
-        # data (the dict keys are different for training and test)
-        if mode == 'training':
-            episode_key = 'nb_episode_steps'
-        else:
-            episode_key = 'nb_steps'
-
-        y_1 = history.history[episode_key]
-        y_2 = history.history['episode_reward']
-        ind = np.arange(len(y_1))
-
-        # bars
-        width = 0.35       # the width of the bars
-        pyplot.bar(ind, y_1, width, color='g', label='nb_episode_steps')
-        pyplot.ylabel('nr steps per episode')
-        pyplot.xlabel('episode')
-        pyplot.legend(loc="upper left")
-
-        # line
-        axes2 = pyplot.twinx()
-        axes2.plot(ind, y_2, color='k', label='episode_reward')
-        axes2.set_ylabel('episode reward')
-        pyplot.legend(loc="upper right")
-
-
-    # title
-        pyplot.title(mode + ': episode reward and steps per episode')
-
-        # PLOT NR OF LINES CLEARED PER EPISODE
-        pyplot.subplot(133)
-        x = df_results['nr_episode']
-        y = df_results['nr_lines_sum']
-
-        # plotting the points
-        pyplot.plot(x, y)
-
-        # naming the x axis
-        pyplot.xlabel('episodes')
-        # naming the y axis
-        pyplot.ylabel('nr_of_lines')
-
-        # title
-        pyplot.title(mode + ': number of lines per episode')
-
-        # save the plots
-        timestr = time.strftime("%m%d_%H%M%S")
-        pyplot.savefig("logs/img_info_" + timestr)
-
-        # show the plots
-        pyplot.show()
-        pyplot.close()

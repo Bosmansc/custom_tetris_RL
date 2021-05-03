@@ -64,12 +64,12 @@ class Agent:
         self.agent = None
 
         # hyperparameters:
-        self.LEARNING_RATE = 0.01  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
+        self.LEARNING_RATE = 0.001  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
         self.GAMMA = 0.9  # gamma defines penalty for future reward
-        self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
+        self.BATCH_SIZE = 32  # default = 32 -> too small for tetris?
         self.EPSILON_START = 1
         self.EPSILON_END = 0.2
-        self.TARGET_MODEL_UPDATE = 1000  # default is 10000
+        self.TARGET_MODEL_UPDATE = 500  # default is 10000
         self.EPSILON_TEST = 0.1
         self.SEQUENTIAL_MEMORY_LIMIT = 50000
 
@@ -205,7 +205,7 @@ class Agent:
         df_results = df.groupby('nr_episode', as_index=False) \
             .agg(heigt_diff_sum=('height_difference', 'sum'),
                  new_block_sum=('new_block', 'sum'),
-                 nr_lines_sum=('number_of_lines', 'sum'),
+                 nr_lines_sum=('number_of_lines', 'max'),
                  score_sum=('score', 'sum'),
                  score_avg=('score', 'mean'),
                  count_steps=('nr_episode', 'count'))
@@ -307,7 +307,7 @@ class Agent:
         # add subtitle with hyperparams
         subtitile = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
                     f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
-        plt.figtext(0.01, 0.01, subtitile, fontsize=15)
+        pyplot.figtext(0.01, 0.01, subtitile, fontsize=15)
 
         # title
         pyplot.title(mode + ': moving average nr of lines')
@@ -328,6 +328,7 @@ class Agent:
         with open('dqn_log.json') as json_file:
             data = json.load(json_file)
         df_log = pd.DataFrame.from_dict(data)
+        figure = pyplot.figure(figsize=(20, 10), dpi=80)
         for idx, col in enumerate(df_log.columns):
             self._combine_metrics(df_log, col, idx)
 
@@ -369,10 +370,10 @@ if __name__ == '__main__':
     agent = Agent()
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=True)
+    agent.train(nb_steps=1000, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=1)
+    agent.test(nb_episodes=10, visualize=True)
 
     # save the agent
     # agent.save('square_and_rect_1000000_0205.model')
