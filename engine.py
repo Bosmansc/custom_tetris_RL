@@ -286,7 +286,7 @@ class TetrisEngine:
             if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
                 self.score += 5
         elif lines_cleared < 1:
-            self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
+            self.score -= 0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
