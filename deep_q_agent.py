@@ -1,7 +1,4 @@
 import warnings
-
-warnings.filterwarnings("ignore")
-
 import random
 from time import sleep
 import time
@@ -19,7 +16,10 @@ from matplotlib import pyplot
 import tensorflow.python.util.deprecation as deprecation
 import json
 import pandas as pd
+import argparse
+import sys
 
+warnings.filterwarnings("ignore")
 deprecation._PRINT_DEPRECATION_WARNINGS = False
 
 ## use pip install --upgrade --force-reinstall  git+https://github.com/Bosmansc/tetris_openai.git
@@ -36,6 +36,7 @@ def timer(func):
     """
     method used as wrapper to time functions
     """
+
     def f(*args, **kwargs):
         before = time.time()
         rv = func(*args, **kwargs)
@@ -58,20 +59,21 @@ def build_callbacks():
 
 
 class Agent:
-    def __init__(self):
+    def __init__(self, lr=0.01, gamma=0.9, batch_size=100, eps_start=1, eps_end=0.3, eps_test=0.3,
+                 target_model_update=1000, seq_memory_limit=50000):
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine()
         self.agent = None
 
         # hyperparameters:
-        self.LEARNING_RATE = 0.01  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
-        self.GAMMA = 0.9  # gamma defines penalty for future reward
-        self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
-        self.EPSILON_START = 1
-        self.EPSILON_END = 0.2
-        self.TARGET_MODEL_UPDATE = 1000  # default is 10000
-        self.EPSILON_TEST = 0.1
-        self.SEQUENTIAL_MEMORY_LIMIT = 50000
+        self.LEARNING_RATE = lr  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
+        self.GAMMA = gamma  # gamma defines penalty for future reward
+        self.BATCH_SIZE = batch_size  # default = 32 -> too small for tetris?
+        self.EPSILON_START = eps_start
+        self.EPSILON_END = eps_end
+        self.TARGET_MODEL_UPDATE = target_model_update  # default is 10000
+        self.EPSILON_TEST = eps_test
+        self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
 
         # target model update in source code:
         # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
@@ -307,7 +309,7 @@ class Agent:
         # add subtitle with hyperparams
         subtitile = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
                     f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
-        plt.figtext(0.01, 0.01, subtitile, fontsize=15)
+        pyplot.figtext(0.01, 0.01, subtitile, fontsize=15)
 
         # title
         pyplot.title(mode + ': moving average nr of lines')
@@ -333,7 +335,7 @@ class Agent:
 
         # add subtitle
         subtitle = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
-                    f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
+                   f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
         pyplot.figtext(0.01, 0.01, subtitle, fontsize=15)
 
         # save fig
@@ -366,16 +368,35 @@ class Agent:
 
 
 if __name__ == '__main__':
-    agent = Agent()
+    # add program arguments to make it easier to run from command line
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--lr', help='learning rate', required=False)
+    parser.add_argument('--gamma', help='gamma', required=False)
+    parser.add_argument('--batch_size', help='batch size', required=False)
+    parser.add_argument('--eps_start', help='epsilon start', required=False)
+    parser.add_argument('--eps_end', help='epsilon end', required=False)
+    parser.add_argument('--eps_test', help='epsilon test', required=False)
+    parser.add_argument('--target_model_update', help='target model update', required=False)
+    parser.add_argument('--seq_memory_limit', help='sequential memory limit', required=False)
+    args = parser.parse_args()
+
+    if len(sys.argv) == 1:
+        agent = Agent(lr=0.01, gamma=0.9, batch_size=1000, eps_start=1, eps_end=0.3, eps_test=0.3, target_model_update=10000,
+                      seq_memory_limit=50000)
+    else:
+        # python3 deep_q_agent.py --lr 0.01 --gamma 0.9 --batch_size 100 --eps_start 1 --eps_end 0.3 --eps_test 0.3 --target_model_update 1000 --seq_memory_limit 50000
+        agent = Agent(lr=float(args.lr), gamma=float(args.gamma), batch_size=int(args.batch_size), eps_start=float(args.eps_start),
+                      eps_end=float(args.eps_end), eps_test=float(args.eps_test), target_model_update=int(args.target_model_update),
+                      seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=True)
+    agent.train(nb_steps=1_000_000, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=1)
+    agent.test(nb_episodes=10)
 
     # save the agent
-    # agent.save('square_and_rect_1000000_0205.model')
+    agent.save('square_and_rect_1000000_0205.model')
 
     # plot the logs
-    agent.plot_metrics(save_fig=False)
+    agent.plot_metrics(save_fig=True)
