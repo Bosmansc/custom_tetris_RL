@@ -204,6 +204,7 @@ class TetrisEngine:
     def step(self, action):
         # Save previous score and height to calculate difference
         old_score = self.score
+        self.score = 0
         old_height = height(np.transpose(np.copy(self.board)))
 
         self.anchor = (int(self.anchor[0]), int(self.anchor[1]))
@@ -281,7 +282,7 @@ class TetrisEngine:
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
         if new_block and height_difference == 0:
             pass
-            self.score = 5  # reward for keeping height low
+            self.score += 5  # reward for keeping height low
             if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
                 self.score += 5
         elif lines_cleared < 1:
