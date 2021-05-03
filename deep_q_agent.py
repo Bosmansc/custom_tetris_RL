@@ -1,4 +1,7 @@
 import warnings
+
+warnings.filterwarnings("ignore")
+
 import random
 from time import sleep
 import time
@@ -207,7 +210,7 @@ class Agent:
         df_results = df.groupby('nr_episode', as_index=False) \
             .agg(heigt_diff_sum=('height_difference', 'sum'),
                  new_block_sum=('new_block', 'sum'),
-                 nr_lines_sum=('number_of_lines', 'sum'),
+                 nr_lines_sum=('number_of_lines', 'max'),
                  score_sum=('score', 'sum'),
                  score_avg=('score', 'mean'),
                  count_steps=('nr_episode', 'count'))
@@ -330,6 +333,7 @@ class Agent:
         with open('dqn_log.json') as json_file:
             data = json.load(json_file)
         df_log = pd.DataFrame.from_dict(data)
+        figure = pyplot.figure(figsize=(20, 10), dpi=80)
         for idx, col in enumerate(df_log.columns):
             self._combine_metrics(df_log, col, idx)
 
@@ -390,13 +394,13 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=1_000_000, visualise=False)
+    agent.train(nb_steps=1000, visualise=True)
 
     # test the agent
-    agent.test(nb_episodes=10)
+    agent.test(nb_episodes=1)
 
     # save the agent
-    agent.save('square_and_rect_1000000_0205.model')
+    # agent.save('square_and_rect_1000000_0205.model')
 
     # plot the logs
-    agent.plot_metrics(save_fig=True)
+    agent.plot_metrics(save_fig=False)
