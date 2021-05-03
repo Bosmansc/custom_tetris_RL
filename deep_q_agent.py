@@ -77,6 +77,7 @@ class Agent:
         self.TARGET_MODEL_UPDATE = target_model_update  # default is 10000
         self.EPSILON_TEST = eps_test
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
+        self.TEST_MAX_EPISODE_STEPS = 300
 
         # target model update in source code:
         # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
@@ -122,7 +123,7 @@ class Agent:
         """
         self.env.reset_environment()
         history_test = self.agent.test(self.env, nb_episodes=nb_episodes, visualize=visualize,
-                                       nb_max_episode_steps=300)
+                                       nb_max_episode_steps=self.TEST_MAX_EPISODE_STEPS)
 
         print(np.mean(history_test.history['episode_reward']))
 
@@ -300,15 +301,6 @@ class Agent:
         # naming the y axis
         pyplot.ylabel('moving average total score')
 
-        self.LEARNING_RATE = 0.01  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
-        self.GAMMA = 0.9  # gamma defines penalty for future reward
-        self.BATCH_SIZE = 100  # default = 32 -> too small for tetris?
-        self.EPSILON_START = 1
-        self.EPSILON_END = 0.2
-        self.TARGET_MODEL_UPDATE = 1000  # default is 10000
-        self.EPSILON_TEST = 0.1
-        self.SEQUENTIAL_MEMORY_LIMIT = 50000
-
         # add subtitle with hyperparams
         subtitile = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
                     f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
@@ -404,3 +396,4 @@ if __name__ == '__main__':
 
     # plot the logs
     agent.plot_metrics(save_fig=False)
+
