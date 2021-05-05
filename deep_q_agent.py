@@ -64,9 +64,6 @@ def build_callbacks():
 class Agent:
     def __init__(self, lr=0.01, gamma=0.9, batch_size=100, eps_start=1, eps_end=0.3, eps_test=0.3,
                  target_model_update=1000, seq_memory_limit=50000):
-        # Initializes a Tetris playing field of width 10 and height 20.
-        self.env = TetrisEngine()
-        self.agent = None
 
         # hyperparameters:
         self.LEARNING_RATE = lr  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
@@ -79,6 +76,11 @@ class Agent:
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
+        self.DYING_PEN = 100
+
+        # Initializes a Tetris playing field of width 10 and height 20.
+        self.env = TetrisEngine(dying_penalty=self.DYING_PEN)
+        self.agent = None
 
         # target model update in source code:
         # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:

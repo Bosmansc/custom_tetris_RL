@@ -122,13 +122,13 @@ def get_column_holes(state):
 
 
 class TetrisEngine:
-    def __init__(self, max_actions=5):
+    def __init__(self, max_actions=5, dying_penalty=100):
         # self.width = 10 # = initial
         # self.height = 20 # = initial
 
         self.width = 6
         self.height = 10
-        self.dying_penalty = 100
+        self.dying_penalty = dying_penalty
 
         self.board = np.zeros(shape=(self.width, self.height), dtype=np.float)
         self.action_count = 0
@@ -282,7 +282,7 @@ class TetrisEngine:
         self.clear()
         self.__init__()
 
-    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
+    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False):
         if new_block and height_difference == 0:
             self.score = 5  # reward for keeping height low
             if lowest_pos_last_block == 0:  # extra reward if the block is put on the bottom line
