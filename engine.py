@@ -12,15 +12,17 @@ import matplotlib.pyplot as plt
 
 shapes = {
     #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
-    #  'J': [(0, 0), (-1, 0), (0, -1), (0, -2)]
-    #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
+    #'J': [(0, 0), (-1, 0), (0, -1), (0, -2)],
+    # 'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-    #    'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
-      'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
+    'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+    'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
-shape_names = [  # 'J', 'L', 'Z', 'S',
-      # 'I',
+shape_names = [  # T,
+    # 'J', 'L',
+    # 'Z', 'S',
+    'I',
     'O']
 
 colors = {
@@ -125,7 +127,8 @@ class TetrisEngine:
         # self.height = 20 # = initial
 
         self.width = 6
-        self.height = 16
+        self.height = 10
+        self.dying_penalty = 100
 
         self.board = np.zeros(shape=(self.width, self.height), dtype=np.float)
         self.action_count = 0
@@ -243,7 +246,7 @@ class TetrisEngine:
             height_difference = old_height - height(state)
         else:
             height_difference = 0
-        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block)
+        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block, death=done)
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
@@ -278,14 +281,15 @@ class TetrisEngine:
         self.clear()
         self.__init__()
 
-    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block):
+    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False):
         if new_block and height_difference == 0:
-            pass
             self.score = 5  # reward for keeping height low
-            if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
+            if lowest_pos_last_block == 0:  # extra reward if the block is put on the bottom line
                 self.score += 5
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
+        if death:   # add penalty for dying
+            self.score += -self.dying_penalty
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
@@ -324,4 +328,3 @@ class TetrisEngine:
         cv2.imshow('image', np.array(img))
         # sleep(0.5)
         cv2.waitKey(1)
-

@@ -77,7 +77,7 @@ class Agent:
         self.TARGET_MODEL_UPDATE = target_model_update  # default is 10000
         self.EPSILON_TEST = eps_test
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
-        self.TEST_MAX_EPISODE_STEPS = 300
+        self.TEST_MAX_EPISODE_STEPS = 500
 
         # target model update in source code:
         # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
@@ -106,7 +106,8 @@ class Agent:
                                    nb_steps=nb_steps,
                                    callbacks=callbacks,
                                    visualize=visualise,
-                                   log_interval=self.TARGET_MODEL_UPDATE)
+                                   log_interval=self.TARGET_MODEL_UPDATE,
+                                   verbose=2)
 
         # plot the results
         self._plot_custom_results(self.env.df_info, history_training, mode='training')
@@ -140,21 +141,22 @@ class Agent:
         """
         define the neural network model architecture for the deep q agent
         """
-        # Network defined by the Deepmind paper
         model = tf.keras.models.Sequential()
 
-        model.add(Conv2D(32, (3, 3), padding='same', kernel_initializer='he_uniform',
-                         kernel_constraint=max_norm(4), input_shape=(1, self.env.height, self.env.width)))
+        model.add(Conv2D(32, (4, 4), padding='same', kernel_initializer='he_uniform',
+                         kernel_constraint=max_norm(3), input_shape=(1, self.env.height, self.env.width)))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(Activation('tanh'))
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer='he_uniform'))
+        model.add(Conv2D(64, (4, 4), padding='same', kernel_initializer='he_uniform',
+                         kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(Activation('tanh'))
 
-        model.add(Conv2D(64, (3, 3), padding='same', kernel_initializer='he_uniform'))
+        model.add(Conv2D(64, (4, 4), padding='same', kernel_initializer='he_uniform',
+                         kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(Activation('tanh'))
 
         # model.add(MaxPooling2D(pool_size=(2,2)))
 
@@ -162,11 +164,13 @@ class Agent:
         model.add(Flatten())
         model.add(Dense(128, kernel_initializer='he_uniform', kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(Activation('tanh'))
         model.add(Dropout(0.5))
 
         # Final dense layer
-        model.add(Dense(actions, activation='linear'))
+        model.add(Dense(actions))
+        model.add(BatchNormalization())
+        model.add(Activation('linear'))
 
         return model
 
@@ -196,7 +200,7 @@ class Agent:
                                       nb_steps=nb_steps)
         memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE)
+                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE, enable_double_dqn=True)
         return build_agent
 
     def _plot_custom_results(self, df, history, mode='training'):
@@ -377,23 +381,25 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
-        agent = Agent(lr=0.01, gamma=0.9, batch_size=1000, eps_start=1, eps_end=0.3, eps_test=0.3, target_model_update=10000,
-                      seq_memory_limit=50000)
+        agent = Agent(lr=0.0001, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0.05,
+                      target_model_update=1000, seq_memory_limit=50000
+                      )
     else:
         # python3 deep_q_agent.py --lr 0.01 --gamma 0.9 --batch_size 100 --eps_start 1 --eps_end 0.3 --eps_test 0.3 --target_model_update 1000 --seq_memory_limit 50000
-        agent = Agent(lr=float(args.lr), gamma=float(args.gamma), batch_size=int(args.batch_size), eps_start=float(args.eps_start),
-                      eps_end=float(args.eps_end), eps_test=float(args.eps_test), target_model_update=int(args.target_model_update),
+        agent = Agent(lr=float(args.lr), gamma=float(args.gamma), batch_size=int(args.batch_size),
+                      eps_start=float(args.eps_start),
+                      eps_end=float(args.eps_end), eps_test=float(args.eps_test),
+                      target_model_update=int(args.target_model_update),
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=True)
+    agent.train(nb_steps=5000, visualise=True)
 
     # test the agent
-    agent.test(nb_episodes=1)
+    agent.test(nb_episodes=2)
 
     # save the agent
     # agent.save('square_and_rect_1000000_0205.model')
 
     # plot the logs
     agent.plot_metrics(save_fig=False)
-
