@@ -78,6 +78,7 @@ class Agent:
         self.EPSILON_TEST = eps_test
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
+        self.TRAIN_MAX_EPISODE_STEPS = 500
 
         # target model update in source code:
         # if self.target_model_update >= 1 and self.step % self.target_model_update == 0:
@@ -107,7 +108,8 @@ class Agent:
                                    callbacks=callbacks,
                                    visualize=visualise,
                                    log_interval=self.TARGET_MODEL_UPDATE,
-                                   verbose=2)
+                                   verbose=2,
+                                   nb_max_episode_steps=self.TRAIN_MAX_EPISODE_STEPS)
 
         # plot the results
         self._plot_custom_results(self.env.df_info, history_training, mode='training')
@@ -393,7 +395,7 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=5000, visualise=True)
+    agent.train(nb_steps=100, visualise=True)
 
     # test the agent
     agent.test(nb_episodes=2)
