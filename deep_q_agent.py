@@ -77,7 +77,7 @@ class Agent:
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
-        self.DYING_PEN = 1
+        self.DYING_PEN = 40
 
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine(dying_penalty=self.DYING_PEN)
@@ -111,7 +111,7 @@ class Agent:
                                    callbacks=callbacks,
                                    visualize=visualise,
                                    log_interval=self.TARGET_MODEL_UPDATE,
-                                   verbose=2,
+                                   verbose=0,
                                    nb_max_episode_steps=self.TRAIN_MAX_EPISODE_STEPS)
 
         # plot the results
@@ -387,8 +387,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
-        agent = Agent(lr=0.0001, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0.05,
-                      target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.8
+        agent = Agent(lr=0.01, gamma=0.9, batch_size=256, eps_start=1, eps_end=0, eps_test=0,
+                      target_model_update=2000, seq_memory_limit=50000, epsilon_decay=0.8
                       )
     else:
         # python3 deep_q_agent.py --lr 0.01 --gamma 0.9 --batch_size 100 --eps_start 1 --eps_end 0.3 --eps_test 0.3 --target_model_update 1000 --seq_memory_limit 50000
@@ -399,10 +399,10 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=1000, visualise=True)
+    agent.train(nb_steps=100_000, visualise=False)
 
     # test the agent
-    agent.test(nb_episodes=2)
+    agent.test(nb_episodes=10)
 
     # save the agent
     # agent.save('square_and_rect_1000000_0205.model')
