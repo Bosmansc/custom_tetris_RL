@@ -76,7 +76,7 @@ class Agent:
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
-        self.DYING_PEN = 100
+        self.DYING_PEN = 10000
 
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine(dying_penalty=self.DYING_PEN)
@@ -397,7 +397,7 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=100, visualise=True)
+    agent.train(nb_steps=5000, visualise=True)
 
     # test the agent
     agent.test(nb_episodes=2)

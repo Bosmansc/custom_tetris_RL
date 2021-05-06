@@ -280,7 +280,7 @@ class TetrisEngine:
 
     def reset_environment(self):
         self.clear()
-        self.__init__()
+        self.__init__(dying_penalty=self.dying_penalty)
 
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False):
         if new_block and height_difference == 0:
