@@ -120,7 +120,7 @@ def get_column_holes(state):
 
 
 class TetrisEngine:
-    def __init__(self, dying_pen, max_actions=5):
+    def __init__(self, dying_pen, max_actions=5, max_steps=500, max_step_score=1000):
         # self.width = 10 # = initial
         # self.height = 20 # = initial
 
@@ -128,6 +128,8 @@ class TetrisEngine:
         self.height = 16
 
         self.DYING_PENALTY = dying_pen
+        self.MAX_STEPS = max_steps
+        self.MAX_STEP_SCORE = max_step_score
 
         self.board = np.zeros(shape=(self.width, self.height), dtype=np.float)
         self.action_count = 0
@@ -154,6 +156,7 @@ class TetrisEngine:
         self.shape = None
         self.n_deaths = 0
         self.number_of_lines = 0
+        self.episode_step = 0
 
         # used for generating shapes
         self._shape_counts = [0] * len(shapes)
@@ -208,6 +211,7 @@ class TetrisEngine:
         old_score = self.score
         self.score = 0
         old_height = height(np.transpose(np.copy(self.board)))
+        self.episode_step += 1
 
         self.anchor = (int(self.anchor[0]), int(self.anchor[1]))
         self.shape, self.anchor = self.value_action_map[action](self.shape, self.anchor, self.board)
@@ -234,6 +238,8 @@ class TetrisEngine:
                 self.clear()
                 self.n_deaths += 1
                 done = True
+                print(f" - there were {self.episode_step} steps in this episode -")
+                self.episode_step = 0
             else:
                 self._new_piece()
                 new_block = True
@@ -246,7 +252,14 @@ class TetrisEngine:
             height_difference = old_height - height(state)
         else:
             height_difference = 0
-        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block, done)
+        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block,
+                               done, episode_step=self.episode_step)
+
+        if self.episode_step >= self.MAX_STEPS:
+            self.clear(after_max=True)
+            print(f" - the agent reached the max nr of steps of {self.MAX_STEPS}! -")
+            self.episode_step = 0
+            done = True
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
@@ -265,8 +278,9 @@ class TetrisEngine:
         # print("the reward of this step is: " + str(reward))
         return state, reward, done, info
 
-    def clear(self):
-        self.score = 0
+    def clear(self, after_max=False):
+        if not after_max:
+            self.score = 0
         self.number_of_lines = 0
         self._new_piece()
         self.board = np.zeros_like(self.board)
@@ -279,9 +293,9 @@ class TetrisEngine:
 
     def reset_environment(self):
         self.clear()
-        self.__init__(dying_pen=self.DYING_PENALTY)
+        self.__init__(dying_pen=self.DYING_PENALTY, max_steps=self.MAX_STEPS, max_step_score=self.MAX_STEP_SCORE)
 
-    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False):
+    def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False, episode_step=1):
         if new_block and height_difference == 0:
             self.score += 5  # reward for keeping height low
             if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
@@ -291,6 +305,9 @@ class TetrisEngine:
 
         if death: # give penalty when dying
             self.score += -self.DYING_PENALTY
+
+        if episode_step == self.MAX_STEPS:
+            self.score += self.MAX_STEP_SCORE
 
     def _set_piece(self, on=False):
         for i, j in self.shape:

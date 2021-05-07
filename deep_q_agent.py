@@ -77,10 +77,12 @@ class Agent:
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
-        self.DYING_PEN = 50
+        self.MAX_STEP_SCORE = 1000  # score if max episode steps are reached
+        self.DYING_PEN = 100
 
         # Initializes a Tetris playing field of width 10 and height 20.
-        self.env = TetrisEngine(dying_pen=self.DYING_PEN)
+        self.env = TetrisEngine(dying_pen=self.DYING_PEN, max_steps=self.TRAIN_MAX_EPISODE_STEPS,
+                                max_step_score=self.MAX_STEP_SCORE)
         self.agent = None
 
         # target model update in source code:
