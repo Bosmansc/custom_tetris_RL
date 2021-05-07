@@ -62,8 +62,8 @@ def build_callbacks():
 
 
 class Agent:
-    def __init__(self, lr=0.01, gamma=0.9, batch_size=100, eps_start=1, eps_end=0.3, eps_test=0.3,
-                 target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.8):
+    def __init__(self, lr=0.01, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0,
+                 target_model_update=1000, seq_memory_limit=50000, epsilon_decay=1):
 
         # hyperparameters:
         self.LEARNING_RATE = lr  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
@@ -77,10 +77,10 @@ class Agent:
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
-        self.DYING_PEN = 40
+        self.DYING_PEN = 50
 
         # Initializes a Tetris playing field of width 10 and height 20.
-        self.env = TetrisEngine(dying_penalty=self.DYING_PEN)
+        self.env = TetrisEngine(dying_pen=self.DYING_PEN)
         self.agent = None
 
         # target model update in source code:
@@ -111,8 +111,9 @@ class Agent:
                                    callbacks=callbacks,
                                    visualize=visualise,
                                    log_interval=self.TARGET_MODEL_UPDATE,
-                                   verbose=0,
-                                   nb_max_episode_steps=self.TRAIN_MAX_EPISODE_STEPS)
+                                   verbose=1,
+                                   nb_max_episode_steps=self.TRAIN_MAX_EPISODE_STEPS
+                                   )
 
         # plot the results
         self._plot_custom_results(self.env.df_info, history_training, mode='training')
@@ -146,6 +147,7 @@ class Agent:
         """
         define the neural network model architecture for the deep q agent
         """
+
         model = tf.keras.models.Sequential()
 
         model.add(Conv2D(32, (4, 4), padding='same', kernel_initializer='he_uniform',
@@ -205,8 +207,7 @@ class Agent:
                                       nb_steps=self.EPSILON_DECAY * nb_steps)
         memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE,
-                               enable_double_dqn=False)
+                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE)
         return build_agent
 
     def _plot_custom_results(self, df, history, mode='training'):
@@ -387,8 +388,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
-        agent = Agent(lr=0.01, gamma=0.9, batch_size=256, eps_start=1, eps_end=0, eps_test=0,
-                      target_model_update=2000, seq_memory_limit=50000, epsilon_decay=0.8
+        agent = Agent(lr=0.0001, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0,
+                      target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.5
                       )
     else:
         # python3 deep_q_agent.py --lr 0.01 --gamma 0.9 --batch_size 100 --eps_start 1 --eps_end 0.3 --eps_test 0.3 --target_model_update 1000 --seq_memory_limit 50000

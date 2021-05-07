@@ -12,17 +12,15 @@ import matplotlib.pyplot as plt
 
 shapes = {
     #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
-    #'J': [(0, 0), (-1, 0), (0, -1), (0, -2)],
-    # 'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
+    #  'J': [(0, 0), (-1, 0), (0, -1), (0, -2)]
+    #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
     #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
     #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
-    'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
+        'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
     'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
-shape_names = [  # T,
-    # 'J', 'L',
-    # 'Z', 'S',
-    'I',
+shape_names = [  # 'J', 'L', 'Z', 'S',
+     'I',
     'O']
 
 colors = {
@@ -122,13 +120,14 @@ def get_column_holes(state):
 
 
 class TetrisEngine:
-    def __init__(self, max_actions=5, dying_penalty=100):
+    def __init__(self, dying_pen, max_actions=5):
         # self.width = 10 # = initial
         # self.height = 20 # = initial
 
         self.width = 6
-        self.height = 10
-        self.dying_penalty = dying_penalty
+        self.height = 16
+
+        self.DYING_PENALTY = dying_pen
 
         self.board = np.zeros(shape=(self.width, self.height), dtype=np.float)
         self.action_count = 0
@@ -192,11 +191,11 @@ class TetrisEngine:
         if sum(can_clear) == 1:
             self.score += 40
         elif sum(can_clear) == 2:
-            self.score += 100
+            self.score += 500
         elif sum(can_clear) == 3:
-            self.score += 300
+            self.score += 1000
         elif sum(can_clear) == 4:
-            self.score += 1200
+            self.score += 2000
         self.board = new_board
 
         if sum(can_clear) > 0:
@@ -247,7 +246,7 @@ class TetrisEngine:
             height_difference = old_height - height(state)
         else:
             height_difference = 0
-        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block, death=done)
+        self._calculate_reward(height_difference, new_block, lines_cleared, lowest_pos_last_block, done)
 
         reward = self.score
         info = dict(score=reward, number_of_lines=self.number_of_lines, new_block=new_block,
@@ -280,17 +279,18 @@ class TetrisEngine:
 
     def reset_environment(self):
         self.clear()
-        self.__init__(dying_penalty=self.dying_penalty)
+        self.__init__(dying_pen=self.DYING_PENALTY)
 
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False):
         if new_block and height_difference == 0:
             self.score += 5  # reward for keeping height low
-            if lowest_pos_last_block == 0:  # extra reward if the block is put on the bottom line
+            if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
                 self.score += 5
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
-        if death:   # add penalty for dying
-            self.score += -self.dying_penalty
+
+        if death: # give penalty when dying
+            self.score += -self.DYING_PENALTY
 
     def _set_piece(self, on=False):
         for i, j in self.shape:
@@ -329,3 +329,4 @@ class TetrisEngine:
         cv2.imshow('image', np.array(img))
         # sleep(0.5)
         cv2.waitKey(1)
+
