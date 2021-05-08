@@ -12,7 +12,7 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout, Flatten, Conv2D, BatchNormalization, Activation, MaxPooling2D
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.constraints import max_norm
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, LearningRateScheduler
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 from matplotlib import pyplot
@@ -63,7 +63,7 @@ def build_callbacks():
 
 class Agent:
     def __init__(self, lr=0.01, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0,
-                 target_model_update=1000, seq_memory_limit=50000, epsilon_decay=1):
+                 target_model_update=1000, seq_memory_limit=50000, epsilon_decay=1, comment=""):
 
         # hyperparameters:
         self.LEARNING_RATE = lr  # default = 0.001 -> higher LR is faster learning but can become unstable and local minimum
@@ -78,7 +78,10 @@ class Agent:
         self.TEST_MAX_EPISODE_STEPS = 500
         self.TRAIN_MAX_EPISODE_STEPS = 500
         self.MAX_STEP_SCORE = 1000  # score if max episode steps are reached
-        self.DYING_PEN = 100
+        self.DYING_PEN = 50
+
+        # comment for plots
+        self.COMMENT = comment
 
         # Initializes a Tetris playing field of width 10 and height 20.
         self.env = TetrisEngine(dying_pen=self.DYING_PEN, max_steps=self.TRAIN_MAX_EPISODE_STEPS,
@@ -152,20 +155,20 @@ class Agent:
 
         model = tf.keras.models.Sequential()
 
-        model.add(Conv2D(32, (4, 4), padding='same', kernel_initializer='he_uniform',
+        model.add(Conv2D(32, (2, 2), padding='same', kernel_initializer='he_uniform',
                          kernel_constraint=max_norm(3), input_shape=(1, self.env.height, self.env.width)))
         model.add(BatchNormalization())
         model.add(Activation('tanh'))
 
-        model.add(Conv2D(64, (4, 4), padding='same', kernel_initializer='he_uniform',
+        model.add(Conv2D(64, (2, 2), padding='same', kernel_initializer='he_uniform',
                          kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
         model.add(Activation('tanh'))
 
-        model.add(Conv2D(64, (4, 4), padding='same', kernel_initializer='he_uniform',
+        model.add(Conv2D(64, (2, 2), padding='same', kernel_initializer='he_uniform',
                          kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
-        model.add(Activation('tanh'))
+        model.add(Activation('relu'))
 
         # model.add(MaxPooling2D(pool_size=(2,2)))
 
@@ -209,7 +212,8 @@ class Agent:
                                       nb_steps=self.EPSILON_DECAY * nb_steps)
         memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
-                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE)
+                               nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE,
+                               enable_double_dqn=True)
         return build_agent
 
     def _plot_custom_results(self, df, history, mode='training'):
@@ -316,7 +320,7 @@ class Agent:
 
         # add subtitle with hyperparams
         subtitile = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
-                    f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
+                    f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}, comment: {self.COMMENT}"
         pyplot.figtext(0.01, 0.01, subtitile, fontsize=15)
 
         # title
@@ -344,7 +348,7 @@ class Agent:
 
         # add subtitle
         subtitle = f"Epsilon start: {self.EPSILON_START}, Epsilon end: {self.EPSILON_END}, Gamma: {self.GAMMA}, LR: {self.LEARNING_RATE}, " \
-                   f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}"
+                   f"target model update: {self.TARGET_MODEL_UPDATE}, Batch size: {self.BATCH_SIZE}, comment: {self.COMMENT}"
         pyplot.figtext(0.01, 0.01, subtitle, fontsize=15)
 
         # save fig
@@ -389,10 +393,12 @@ if __name__ == '__main__':
     parser.add_argument('--seq_memory_limit', help='sequential memory limit', required=False)
     args = parser.parse_args()
 
+    comment = "try enable_double_dqn=True for same settings are previous run and compare results"
+
     if len(sys.argv) == 1:
-        agent = Agent(lr=0.0001, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0,
-                      target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.5
-                      )
+        agent = Agent(lr=0.0001, gamma=0.9, batch_size=50, eps_start=1, eps_end=0, eps_test=0,
+                      target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.5,
+                      comment=comment)
     else:
         # python3 deep_q_agent.py --lr 0.01 --gamma 0.9 --batch_size 100 --eps_start 1 --eps_end 0.3 --eps_test 0.3 --target_model_update 1000 --seq_memory_limit 50000
         agent = Agent(lr=float(args.lr), gamma=float(args.gamma), batch_size=int(args.batch_size),
@@ -402,7 +408,7 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=100_000, visualise=False)
+    agent.train(nb_steps=50_000, visualise=False)
 
     # test the agent
     agent.test(nb_episodes=10)

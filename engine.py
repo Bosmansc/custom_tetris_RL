@@ -157,6 +157,7 @@ class TetrisEngine:
         self.n_deaths = 0
         self.number_of_lines = 0
         self.episode_step = 0
+        self.episode_score = 0
 
         # used for generating shapes
         self._shape_counts = [0] * len(shapes)
@@ -192,13 +193,13 @@ class TetrisEngine:
                 j -= 1
 
         if sum(can_clear) == 1:
-            self.score += 40
+            self.score += 60
         elif sum(can_clear) == 2:
-            self.score += 500
+            self.score += 150
         elif sum(can_clear) == 3:
-            self.score += 1000
+            self.score += 500
         elif sum(can_clear) == 4:
-            self.score += 2000
+            self.score += 1000
         self.board = new_board
 
         if sum(can_clear) > 0:
@@ -209,6 +210,7 @@ class TetrisEngine:
     def step(self, action):
         # Save previous score and height to calculate difference
         old_score = self.score
+        self.episode_score = self.episode_score + self.score
         self.score = 0
         old_height = height(np.transpose(np.copy(self.board)))
         self.episode_step += 1
@@ -235,11 +237,12 @@ class TetrisEngine:
             lines_cleared = self._clear_lines()
             self.number_of_lines += lines_cleared
             if np.any(self.board[:, 0]):
+                print(f" - there were {self.episode_step} steps in this episode with a final score of {round(self.episode_score, 2)} -")
                 self.clear()
                 self.n_deaths += 1
                 done = True
-                print(f" - there were {self.episode_step} steps in this episode -")
                 self.episode_step = 0
+                self.episode_score = 0
             else:
                 self._new_piece()
                 new_block = True
@@ -259,6 +262,7 @@ class TetrisEngine:
             self.clear(after_max=True)
             print(f" - the agent reached the max nr of steps of {self.MAX_STEPS}! -")
             self.episode_step = 0
+            self.episode_score = 0
             done = True
 
         reward = self.score
@@ -297,9 +301,9 @@ class TetrisEngine:
 
     def _calculate_reward(self, height_difference, new_block, lines_cleared, lowest_pos_last_block, death=False, episode_step=1):
         if new_block and height_difference == 0:
-            self.score += 5  # reward for keeping height low
+            self.score += 2  # reward for keeping height low
             if lowest_pos_last_block == 0:     # extra reward if the block is put on the bottom line
-                self.score += 5
+                self.score += 2
         elif lines_cleared < 1:
             self.score = -0.2  # small penalty for each 'useless' step -> the model will use more hard drops
 
