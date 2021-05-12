@@ -327,6 +327,9 @@ class TetrisEngine:
         if episode_step == self.MAX_STEPS:
             self.score += self.MAX_STEP_SCORE
 
+       # if new_block:
+       #     self.score -= self._bumpiness_board()
+
     def _set_piece(self, on=False):
         for i, j in self.shape:
             x, y = i + self.anchor[0], j + self.anchor[1]
