@@ -75,9 +75,9 @@ class Agent:
         self.TARGET_MODEL_UPDATE = target_model_update  # default is 10000
         self.EPSILON_TEST = eps_test
         self.SEQUENTIAL_MEMORY_LIMIT = seq_memory_limit
-        self.TEST_MAX_EPISODE_STEPS = 500
-        self.TRAIN_MAX_EPISODE_STEPS = 500
-        self.MAX_STEP_SCORE = 1000  # score if max episode steps are reached
+        self.TEST_MAX_EPISODE_STEPS = 10000
+        self.TRAIN_MAX_EPISODE_STEPS = 10000
+        self.MAX_STEP_SCORE = 500  # score if max episode steps are reached
         self.DYING_PEN = 50
 
         # comment for plots
@@ -168,7 +168,7 @@ class Agent:
         model.add(Conv2D(64, (2, 2), padding='same', kernel_initializer='he_uniform',
                          kernel_constraint=max_norm(3)))
         model.add(BatchNormalization())
-        model.add(Activation('relu'))
+        model.add(Activation('tanh'))
 
         # model.add(MaxPooling2D(pool_size=(2,2)))
 
@@ -213,7 +213,7 @@ class Agent:
         memory = SequentialMemory(limit=self.SEQUENTIAL_MEMORY_LIMIT, window_length=1)
         build_agent = DQNAgent(model=model, memory=memory, policy=policy, gamma=self.GAMMA, batch_size=self.BATCH_SIZE,
                                nb_actions=actions, nb_steps_warmup=1000, target_model_update=self.TARGET_MODEL_UPDATE,
-                               enable_double_dqn=True)
+                               enable_double_dqn=False, train_interval=4)
         return build_agent
 
     def _plot_custom_results(self, df, history, mode='training'):
@@ -393,10 +393,10 @@ if __name__ == '__main__':
     parser.add_argument('--seq_memory_limit', help='sequential memory limit', required=False)
     args = parser.parse_args()
 
-    comment = "try enable_double_dqn=True for same settings are previous run and compare results"
+    comment = "run best model on 6x16 without bumpiness"
 
     if len(sys.argv) == 1:
-        agent = Agent(lr=0.0001, gamma=0.9, batch_size=50, eps_start=1, eps_end=0, eps_test=0,
+        agent = Agent(lr=0.0001, gamma=0.9, batch_size=100, eps_start=1, eps_end=0, eps_test=0,
                       target_model_update=1000, seq_memory_limit=50000, epsilon_decay=0.5,
                       comment=comment)
     else:
@@ -408,13 +408,13 @@ if __name__ == '__main__':
                       seq_memory_limit=int(args.seq_memory_limit))
 
     # train the agent
-    agent.train(nb_steps=50_000, visualise=False)
+    agent.train(nb_steps=2_000_000, visualise=False)
 
     # test the agent
     agent.test(nb_episodes=10)
 
-    # save the agent
-    # agent.save('square_and_rect_1000000_0205.model')
-
     # plot the logs
-    agent.plot_metrics(save_fig=False)
+    agent.plot_metrics(save_fig=True)
+
+    # save the agent
+    #agent.save('all_blocks_1M.model')

@@ -1,2 +1,2 @@
-model_checkpoint_path: "square_and_rect_1000000_0205.model.model"
-all_model_checkpoint_paths: "square_and_rect_1000000_0205.model.model"
+model_checkpoint_path: "all_blocks_1M.model.model"
+all_model_checkpoint_paths: "all_blocks_1M.model.model"

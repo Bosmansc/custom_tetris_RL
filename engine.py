@@ -11,15 +11,17 @@ from time import sleep
 import matplotlib.pyplot as plt
 
 shapes = {
-    #  'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
-    #  'J': [(0, 0), (-1, 0), (0, -1), (0, -2)]
-    #  'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
-    #  'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
-    #  'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
+      'T': [(0, 0), (-1, 0), (1, 0), (0, -1)], ## triangle
+      'J': [(0, 0), (-1, 0), (0, -1), (0, -2)],
+      'L': [(0, 0), (1, 0), (0, -1), (0, -2)],
+      'Z': [(0, 0), (-1, 0), (0, -1), (1, -1)],
+     'S': [(0, 0), (-1, -1), (0, -1), (1, 0)],
         'I': [(0, 0), (0, -1), (0, -2), (0, -3)],
     'O': [(0, 0), (0, -1), (-1, 0), (-1, -1)],
 }
-shape_names = [  # 'J', 'L', 'Z', 'S',
+shape_names = [ "T",
+    'J', 'L',
+    'Z', 'S',
      'I',
     'O']
 
@@ -174,6 +176,18 @@ class TetrisEngine:
             if r <= 0:
                 self._shape_counts[i] += 1
                 return shapes[shape_names[i]]
+
+    def _bumpiness_board(self):
+        bumpiness = 0
+        columns_height = [0 for _ in range(self.width)]
+        for i in range(self.width):
+            for j in range(self.height):
+                if self.board.T[j][i]:
+                    columns_height[i] = self.height - j
+                    break
+        for i in range(1, len(columns_height)):
+            bumpiness += abs(columns_height[i] - columns_height[i-1])
+        return bumpiness
 
     def _new_piece(self):
         self.action_count = 0
